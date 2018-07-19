@@ -93,33 +93,6 @@ static void optimize_chol_inc(state_t *state)
     state->total_time += (utime1 - utime0) / 1.0E3;
 }
 
-static void add_factor_hash(int aidx, int bidx, zhash_t *hash, april_graph_factor_t *factor)
-{
-    {
-        uint32_t key = aidx;
-        zqueue_t *factor_list;
-        if(zhash_get(hash, &key, &factor_list)) {
-            zqueue_add_back(factor_list, &factor);
-        } else {
-            factor_list = zqueue_create(sizeof(april_graph_factor_t*));
-            zqueue_add_back(factor_list, &factor);
-            zhash_put(hash, &key, &factor_list, NULL, NULL);
-        }
-    }
-
-    {
-        uint32_t key = bidx;
-        zqueue_t *factor_list;
-        if(zhash_get(hash, &key, &factor_list)) {
-            zqueue_add_back(factor_list, &factor);
-        } else {
-            factor_list = zqueue_create(sizeof(april_graph_factor_t*));
-            zqueue_add_back(factor_list, &factor);
-            zhash_put(hash, &key, &factor_list, NULL, NULL);
-        }
-    }
-}
-
 static int simulate_on_exist_graph(state_t *state)
 {
     printf("Step: %d / %d \n", state->event_idx, zarray_size(state->loaded_graph->nodes));
@@ -143,7 +116,6 @@ static int simulate_on_exist_graph(state_t *state)
                                                   (double[3]){0,0,0},
                                                   NULL,
                                                   W);
-        april_graph_factor_attr_put(factor, stype_get("string"), "type", strdup("geopin"));
         zarray_add(state->graph->factors, &factor);
         matd_destroy(W);
         state->event_idx++;
@@ -232,15 +204,6 @@ void simulate_event(state_t *state)
             optimize_cholesky(state);
         }
         double error = april_graph_chi2(state->graph);
-        /* for (int i = 0; i < zarray_size(state->graph->factors); i++) { */
-        /*     april_graph_factor_t *factor; */
-        /*     zarray_get(state->graph->factors, i, &factor); */
-        /*     if(factor->type != APRIL_GRAPH_FACTOR_XYT_TYPE) */
-        /*         continue; */
-        /*     april_graph_factor_eval_t *eval = factor->state_eval(factor, state->graph, NULL); */
-        /*     error += 0.5 * eval->chi2; */
-        /*     april_graph_factor_eval_destroy(eval); */
-        /* } */
         printf("Chi squared error: %f \nStep running time: %.3f ms, Total running time: %.3f ms \n",
                 error,
                 state->step_time, state->total_time);
@@ -254,12 +217,13 @@ int main(int argc, char *argv[])
     setlinebuf(stdout);
     setlinebuf(stderr);
 
-    stype_register_basic_types();
     april_graph_stype_init();
+    stype_register_basic_types();
     getopt_t *gopt = getopt_create();
     getopt_add_bool(gopt,   'h',  "help", 0, "Show usage");
     getopt_add_bool(gopt,   '\0', "batch_update_only", 0,  "loaded dataset file path");
     getopt_add_string(gopt, '\0', "datapath",    "",    "loaded dataset file path");
+    getopt_add_string(gopt, '\0', "graphpath",  "../data/M3500.graph",   "loaded graph file path");
     getopt_add_int(gopt,    '\0', "nthreshold",  "100", "Batch update if more than nthreshold nodes with significant change");
     getopt_add_double(gopt, '\0', "delta_xy",    "0.1", "re-linearization xy threshold");
     getopt_add_double(gopt, '\0', "delta_theta", "0.1", "re-linearization theta threshold");
@@ -269,18 +233,23 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    const char *datapath = getopt_get_string(gopt,"datapath");
-    if(!strlen(datapath))
-        exit(-1);
-
-    FILE *f = fopen(datapath, "r");
-    if(f==NULL)
-        exit(-1);
-
     state_t *state = calloc(1, sizeof(state_t));
-    state->loaded_graph = april_graph_create();
-    if(convert_datafile_to_graph(state->loaded_graph, f))
-        exit(-1);
+    const char *datapath = getopt_get_string(gopt,"datapath");
+    if(!strlen(datapath)) {
+        state->loaded_graph = april_graph_create_from_file(getopt_get_string(gopt,"graphpath"));
+    }
+    else {
+        FILE *f = fopen(datapath, "r");
+        if(f==NULL) {
+            exit(-1);
+        }
+
+        state->loaded_graph = april_graph_create();
+        if(convert_datafile_to_graph(state->loaded_graph, f)) {
+            exit(-1);
+        }
+        april_graph_save(state->loaded_graph, "/tmp/loaded.graph");
+    }
 
     //Initialize optimizer param
     state->chol_param = calloc(1,sizeof(april_graph_cholesky_param_t));
@@ -297,7 +266,6 @@ int main(int argc, char *argv[])
 
     //cleanup
     april_graph_cholesky_param_destory(state->chol_param);
-    april_graph_destroy(state->loaded_graph);
     april_graph_destroy(state->graph);
     getopt_destroy(gopt);
 

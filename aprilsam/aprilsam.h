@@ -279,4 +279,6 @@ int april_graph_save(april_graph_t *graph, const char *path);
 
 void april_graph_stype_init();
 
+void free_key(void* _key);
+
 #endif

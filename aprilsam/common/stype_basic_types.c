@@ -52,11 +52,16 @@ static void *string_decode(const stype_t *stype, const uint8_t *data, uint32_t *
     return p;
 }
 
+static void string_destroy(const stype_t *stype, void *obj)
+{
+    free(obj);
+}
+
 const stype_t stype_string = { .name = "string" ,
                                .encode = string_encode,
                                .decode = string_decode,
                                .copy = NULL,
-                               .destroy = NULL };
+                               .destroy = string_destroy };
 
 void stype_register_basic_types()
 {

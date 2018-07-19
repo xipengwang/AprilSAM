@@ -29,6 +29,13 @@ void april_graph_factor_eval_destroy(april_graph_factor_eval_t *eval)
     free(eval);
 }
 
+void free_key(void* _key)
+{
+    char** key = (char**)_key;
+    //printf("keys: %s \n", *key);
+    free(*key);
+}
+
 int april_graph_dof(april_graph_t *graph)
 {
     int factor_dof = 0, state_dof = 0;
@@ -204,6 +211,19 @@ void april_graph_attr_destroy(april_graph_attr_t *attr)
     if (!attr)
         return;
 
+    zhash_iterator_t zit;
+    zhash_iterator_init(attr->hash, &zit);
+    char *name;
+    struct april_graph_attr_record record;
+    while (zhash_iterator_next(&zit, &name, &record)) {
+        if (record.stype) {
+            record.stype->destroy(record.stype, record.value);
+        } else {
+            printf("graph attribute %s doesn't have a type\n", name);
+        }
+    }
+
+    zhash_map_keys(attr->hash, free_key);
     zhash_destroy(attr->hash);
     free(attr);
 }
@@ -316,6 +336,10 @@ void april_graph_destroy(april_graph_t *graph)
 
     zarray_destroy(graph->nodes);
     zarray_destroy(graph->factors);
+
+    if(graph->attr) {
+        april_graph_attr_destroy(graph->attr);
+    }
 
     free(graph);
 }

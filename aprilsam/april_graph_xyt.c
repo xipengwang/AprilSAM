@@ -170,6 +170,23 @@ static void xyt_factor_destroy(april_graph_factor_t *factor)
     free(factor->u.common.z);
     free(factor->u.common.ztruth);
     matd_destroy(factor->u.common.W);
+    if(factor->attr) {
+        zhash_iterator_t zit;
+        april_graph_attr_t *attr = factor->attr;
+        zhash_iterator_init(attr->hash, &zit);
+        char *name;
+        struct april_graph_attr_record record;
+        while (zhash_iterator_next(&zit, &name, &record)) {
+            if (record.stype) {
+                record.stype->destroy(record.stype, record.value);
+            } else {
+                printf("graph attribute %s doesn't have a type\n", name);
+            }
+        }
+        zhash_map_keys(attr->hash, free_key);
+        zhash_destroy(attr->hash);
+        free(factor->attr);
+    }
     free(factor);
 }
 
@@ -285,6 +302,7 @@ static april_graph_node_t* xyt_node_copy(april_graph_node_t *node)
     return NULL;
 }
 
+
 static void xyt_node_destroy(april_graph_node_t *node)
 {
     free(node->state);
@@ -292,6 +310,25 @@ static void xyt_node_destroy(april_graph_node_t *node)
     free(node->truth);
     free(node->l_point);
     free(node->delta_X);
+    if(node->attr) {
+
+        zhash_iterator_t zit;
+        april_graph_attr_t *attr = node->attr;
+        zhash_iterator_init(attr->hash, &zit);
+        char *name;
+        struct april_graph_attr_record record;
+        while (zhash_iterator_next(&zit, &name, &record)) {
+            if (record.stype) {
+                record.stype->destroy(record.stype, record.value);
+            } else {
+                printf("graph attribute %s doesn't have a type\n", name);
+            }
+        }
+
+        zhash_map_keys(attr->hash, free_key);
+        zhash_destroy(attr->hash);
+        free(node->attr);
+    }
     free(node);
 }
 

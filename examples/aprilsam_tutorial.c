@@ -50,15 +50,15 @@ void print_state(state_t *state, int step_id)
     for(int i = 0; i < zarray_size(state->graph->nodes); i++) {
         april_graph_node_t *node;
         zarray_get(state->graph->nodes, i, &node);
-        printf("node_%d = {%f, %f, %f} \n", node->UID, node->state[0], node->state[1], node->state[2]);
+        printf("node_%d = {%.2f, %.2f, %.2f} \n", node->UID, node->state[0], node->state[1], node->state[2]);
     }
 }
 
 void simulate_event(state_t *state)
 {
-    //Dog leg dataset. (0,0,0), (0,1,0), (0,2,0), (0,3,0), (0,4,0), (0,5,0)
+    //Dog leg dataset with 6 nodes (x, y, heading): (0,0,0), (0,1,0), (0,2,0), (0,3,0), (0,4,0), (0,5,0)
     april_graph_t *graph = state->graph;
-    //step 1:
+    //step 1: Add node_0
     {
         double ninit[3] = {0,0,0};                           // Node initial position
         double nstate[3] = { ninit[0], ninit[1], ninit[2] }; // Node state after optimization
@@ -69,10 +69,11 @@ void simulate_event(state_t *state)
         node->UID = zarray_size(graph->nodes);
         zarray_add(graph->nodes, &node);
 
-        april_graph_factor_t *factor; // Add a geopin factor for the first node.
-        matd_t * W = matd_create_data(3,3, (double []) {10000, 0, 0,
-                    0, 10000, 0,
-                    0, 0, 1000});
+        april_graph_factor_t *factor;                                // Add a geopin factor for the first node.
+        matd_t * W = matd_create_data(3,3,                           // Information matrix assoicated with the factor
+                                      (double []) {10000, 0, 0,
+                                              0, 10000, 0,
+                                              0, 0, 1000});
         factor = april_graph_factor_xytpos_create(zarray_size(graph->nodes) - 1,
                                                   (double[3]){0,0,0},
                                                   NULL,
@@ -82,7 +83,7 @@ void simulate_event(state_t *state)
         optimize_cholesky(state); //For the first time, you need run a batch update. //TODO: remove this constraint.
         print_state(state, 1);
     }
-    //step 2:
+    //step 2: Add node_1; and add odometry xyt factor between node_0 and node_1
     {
         double ninit[3] = {1,0,0};                           // Node initial position
         double nstate[3] = { ninit[0], ninit[1], ninit[2] }; // Node state after optimization
@@ -97,7 +98,7 @@ void simulate_event(state_t *state)
         double z[3];
         doubles_xyt_inv_mul(na->init, nb->init, z);
         matd_t *W = matd_create(3,3);
-        MATD_EL(W, 0, 0) = 1.0 / pow(0.1, 2);
+        MATD_EL(W, 0, 0) = 1.0 / pow(0.1, 2);               // Information matrix assoicated with the factor
         MATD_EL(W, 1, 1) = 1.0 / pow(0.1, 2);
         MATD_EL(W, 2, 2) = 1.0 / pow(to_radians(1), 2);
         april_graph_factor_t *factor = april_graph_factor_xyt_create(na->UID, nb->UID, z, NULL, W);
@@ -110,7 +111,7 @@ void simulate_event(state_t *state)
         }
         print_state(state, 2);
     }
-    //step 3:
+    //step 3: Add node_2; and add odometry xyt factor between node_1 and node_2
     {
         double ninit[3] = {2,0,0};                           // Node initial position
         double nstate[3] = { ninit[0], ninit[1], ninit[2] }; // Node state after optimization
@@ -138,7 +139,7 @@ void simulate_event(state_t *state)
         }
         print_state(state, 3);
     }
-    //step 4:
+    //step 4: Add node_3; and add odometry xyt factor between node_2 and node_3
     {
         double ninit[3] = {3,0,0};                           // Node initial position
         double nstate[3] = { ninit[0], ninit[1], ninit[2] }; // Node state after optimization
@@ -166,7 +167,7 @@ void simulate_event(state_t *state)
         }
         print_state(state, 4);
     }
-    //step 5:
+    //step 5: Add node_4; and add odometry xyt factor between node_3 and node_4
     {
         double ninit[3] = {4,0,0};                           // Node initial position
         double nstate[3] = { ninit[0], ninit[1], ninit[2] }; // Node state after optimization
@@ -194,7 +195,7 @@ void simulate_event(state_t *state)
         }
         print_state(state, 5);
     }
-    //step 6.a:
+    //step 6.a: Add node_5; and add odometry xyt factor between node_4 and node_5
     {
         double ninit[3] = {5,0,0};                           // Node initial position
         double nstate[3] = { ninit[0], ninit[1], ninit[2] }; // Node state after optimization
@@ -216,14 +217,14 @@ void simulate_event(state_t *state)
         zarray_add(graph->factors, &factor);
         matd_destroy(W);
     }
-    //step 6.b
+    //step 6.b Add a xyt factor between node_0 and node_5. Node_0 thinks node_5 is at (5,1,0).
     {
         april_graph_node_t *na;
         april_graph_node_t *nb;
         zarray_get(graph->nodes, 0, &na);
         zarray_get(graph->nodes, zarray_size(graph->nodes)-1, &nb);
         double z[3];
-        double tmp[3] = {5, 1, 0}; // The first node think the last node is at (5,1,0) not (5,0,0);
+        double tmp[3] = {5, 1, 0};     // The first node think the last node is at (5,1,0) not (5,0,0);
         doubles_xyt_inv_mul(na->init, tmp, z);
         matd_t *W = matd_create(3,3);
         MATD_EL(W, 0, 0) = 1.0 / pow(0.1, 2);
@@ -263,14 +264,20 @@ int main(int argc, char *argv[])
     }
 
     state_t *state = calloc(1, sizeof(state_t));
+
     //Initialize optimizer param
     state->chol_param = calloc(1,sizeof(april_graph_cholesky_param_t));
     april_graph_cholesky_param_init(state->chol_param);
+    //Don't show timeprofiling of aprilsam
     state->chol_param->show_timing = 0;
+    //re-linearization xy threshold(meter)
     state->chol_param->delta_xy =  getopt_get_double(gopt, "delta_xy");
+    //re-linearization theta threshold(radian)
     state->chol_param->delta_theta = getopt_get_double(gopt, "delta_theta");
+    //Batch update if more than nthreshold nodes with significant at least delta_xy or delta_theta changes.
     state->chol_param->nthreshold = getopt_get_int(gopt, "nthreshold");
     state->batch_update_only = getopt_get_bool(gopt, "batch_update_only");
+
     //simulate
     state->graph = april_graph_create();
     simulate_event(state);

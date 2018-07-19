@@ -8,7 +8,6 @@ https://april.eecs.umich.edu/
 
 [Video](https://april.eecs.umich.edu/public/users/xipengw/videos/AprilSAM.mp4)
 
-
 INSTALL
 =======
 
@@ -60,32 +59,51 @@ Add xyt factor:
 
 Cholesky optimization:
 
-    april_graph_cholesky(graph, chol_param);
+    void april_graph_cholesky(graph, chol_param);
 
 AprilSAM increnmetal optimization:
 
-    april_graph_cholesky_inc(graph, chol_param);
+    void april_graph_cholesky_inc(graph, chol_param);
 
-Graph Chi^2 error: (f(x)-z)^{T}\Sigma^{-1}(f(x)-z)
+Graph Chi^2 error: (f(x)-z)^T \Sigma^-1 (f(x)-z)
 
-    april_graph_chi2(graph);
+    double april_graph_chi2(graph);
 
-### An example of saving and loading graph file can be seen in `example/aprilsam_graph.c`
+### An example of saving and loading graph file can be seen in `example/aprilsam_graph_save_simple.c`
 
 Save a graph:
 
-    april_graph_save(april_graph_t *graph, const char *path)
+    void april_graph_save(april_graph_t *graph, const char *path)
 
 Load a graph:
 
-    april_graph_create_from_file(const char *path)
+    april_graph_t* april_graph_create_from_file(const char *path)
+
+### An example of saving and retrieving graph/node/factor attributes can be seen in `example/aprilsam_graph_save_with_attributes.c`
+
+Add attributes:
+
+    void april_graph_attr_put(april_graph_t *graph, const stype_t *type, const char *key, void *data)
+    void april_graph_node_attr_put(april_graph_node_t *node, const stype_t *type, const char *key, void *data)
+    void april_graph_factor_attr_put(april_graph_factor_t *factor, const stype_t *type, const char *key, void *data)
+
+Get attributes:
+
+    void* april_graph_attr_get(april_graph_t * graph, const char * key)
+    void* april_graph_node_attr_get(april_graph_t * graph, const char * key)
+    void* april_graph_factor_attr_get(april_graph_t * graph, const char * key)
+
 
 ### An example of evaluting AprilSAM on Manhattan3500 dataset can be seen in `example/aprilsam_demo.c`
 
-Test aprilsam optimization:
+Test aprilsam optimization (Load an AprilSAM graph file):
+
+    ./aprilsam_demo
+
+Test aprilsam optimization (Load a text file):
 
     ./aprilsam_demo --datapath ../data/M3500.txt
 
-Test batch update only optimization:
+Test batch update only step by step optimization:
 
     ./aprilsam_demo --datapath ../data/M3500.txt --batch_update_only

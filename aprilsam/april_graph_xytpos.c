@@ -22,6 +22,9 @@ static april_graph_factor_t* xytpos_factor_copy(april_graph_factor_t *factor)
     if (factor->attr) {
         //assert(0);
         //TODO: iterate the attr hash
+        next->attr = calloc(1, sizeof(april_graph_attr_t));
+        next->attr->stype = factor->attr->stype;
+        next->attr->hash = zhash_copy(factor->attr->hash);
     }
     next->copy = factor->copy;
     next->eval = factor->eval;
@@ -83,6 +86,23 @@ static void xytpos_factor_destroy(april_graph_factor_t *factor)
     free(factor->u.common.z);
     free(factor->u.common.ztruth);
     matd_destroy(factor->u.common.W);
+    if(factor->attr) {
+        zhash_iterator_t zit;
+        april_graph_attr_t *attr = factor->attr;
+        zhash_iterator_init(attr->hash, &zit);
+        char *name;
+        struct april_graph_attr_record record;
+        while (zhash_iterator_next(&zit, &name, &record)) {
+            if (record.stype) {
+                record.stype->destroy(record.stype, record.value);
+            } else {
+                printf("graph attribute %s doesn't have a type\n", name);
+            }
+        }
+        zhash_map_keys(attr->hash, free_key);
+        zhash_destroy(attr->hash);
+        free(factor->attr);
+    }
     free(factor);
 }
 
