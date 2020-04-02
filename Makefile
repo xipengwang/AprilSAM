@@ -32,7 +32,7 @@ install: $(APRILSAM_LIB)/libaprilsam.so
 
 $(APRILSAM_LIB)/libaprilsam.a: $(APRILSAM_OBJS)
 		@echo "   [$@]"
-		@$(AR) -cq $@ $(APRILSAM_OBJS)
+		@$(AR) -cr $@ $(APRILSAM_OBJS)
 
 $(APRILSAM_LIB)/libaprilsam.so: $(APRILSAM_OBJS)
 		@echo "   [$@]"
