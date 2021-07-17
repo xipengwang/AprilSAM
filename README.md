@@ -1,12 +1,14 @@
 AprilSAM: Real-time Smoothing and Mapping
 ===================================================
-Copyright APRIL Lab.
+[Paper: AprilSAM: Real-time Smoothing and Mapping](https://april.eecs.umich.edu/papers/details.php?name=wang2018aprilsam)
+
+[Video](https://april.eecs.umich.edu/public/users/xipengw/videos/AprilSAM.mp4)
+
+[Tutorial NoteBook](https://xipengwang.github.io/factor-graph/)
 
 https://april.eecs.umich.edu/
 
-[AprilSAM: Real-time Smoothing and Mapping](https://april.eecs.umich.edu/papers/details.php?name=wang2018aprilsam)
-
-[Video](https://april.eecs.umich.edu/public/users/xipengw/videos/AprilSAM.mp4)
+Copyright APRIL Lab.
 
 INSTALL
 =======
